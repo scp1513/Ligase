@@ -7,11 +7,11 @@ echo `pwd`
 export GOPROXY=https://goproxy.io
 
 cd $PROJDIR/cmd/engine-server
-go build -v -o $PROJDIR/bin/engine-server
+go build -tags musl -v -o $PROJDIR/bin/engine-server
 cd $PROJDIR/cmd/federation
-go build -v -o $PROJDIR/bin/federation
+go build -tags musl -v -o $PROJDIR/bin/federation
 cd $PROJDIR/cmd/content
-go build -v -o $PROJDIR/bin/content
+go build -tags musl -v -o $PROJDIR/bin/content
 
 cd $PROJDIR
 go mod tidy

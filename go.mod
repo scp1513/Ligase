@@ -7,6 +7,7 @@ require (
 	github.com/bsm/sarama-cluster v2.1.15+incompatible
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd // indirect
+	github.com/confluentinc/confluent-kafka-go v1.4.2 // indirect
 	github.com/gchaincl/sqlhooks v1.3.0
 	github.com/gomodule/redigo/redis v0.0.0-20200429221454-e14091dffc1b
 	github.com/gorilla/mux v1.7.4
@@ -36,7 +37,7 @@ require (
 	go.uber.org/multierr v1.5.0
 	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37
 	google.golang.org/appengine v1.6.6 // indirect
-	gopkg.in/confluentinc/confluent-kafka-go.v1 v1.1.0
+	gopkg.in/confluentinc/confluent-kafka-go.v1 v1.4.2
 	gopkg.in/macaroon.v2 v2.1.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/yaml.v2 v2.3.0
