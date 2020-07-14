@@ -53,6 +53,13 @@ type msgContext struct {
 	msg    kafka.Message
 }
 
+type KafkaOffsetPair struct {
+	kafka.TopicPartition
+	EndOffset     int64
+	LastCheckTime time.Time
+	ErrorTimes    int
+}
+
 type KafkaChannel struct {
 	start   bool
 	logPorf bool
@@ -72,6 +79,10 @@ type KafkaChannel struct {
 	broker      string
 	conf        interface{}
 	subTopics   []string
+
+	assignedTopics []kafka.TopicPartition
+	topicOffsets   []*KafkaOffsetPair
+	errorTimes     int
 }
 
 func init() {
@@ -117,6 +128,25 @@ func (c *KafkaChannel) SetHandler(handler core.IChannelConsumer) {
 	c.handler = handler
 }
 
+func (c *KafkaChannel) IsTopicCreated(ctx context.Context, admin *kafka.AdminClient, topic string) (bool, error) {
+	dur, _ := time.ParseDuration("30s")
+	log.Infof("kafka check topic is create begin")
+	result, err := admin.DescribeConfigs(ctx, []kafka.ConfigResource{{Type: kafka.ResourceTopic, Name: topic}}, kafka.SetAdminRequestTimeout(dur))
+	log.Infof("kafka check topic is create end")
+	if err != nil {
+		return false, err
+	}
+	if len(result) < 1 {
+		log.Errorf("kafka check topic is create result len < 1, topic: %s", topic)
+		return false, nil
+	}
+	log.Infof("kafka check topic is create topic: %s, result: %s, err: %v", topic, result[0].String(), err)
+	if result[0].Error.Code() != kafka.ErrNoError {
+		return false, nil
+	}
+	return true, nil
+}
+
 //all topic create by this method, cancel auto create
 func (c *KafkaChannel) createTopic(broker, topic string) error {
 	if topic == "" {
@@ -134,6 +164,18 @@ func (c *KafkaChannel) createTopic(broker, topic string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	isExists, err := c.IsTopicCreated(ctx, a, topic)
+	if err != nil {
+		log.Errorf("kafka check if topic exists error %v", err)
+	}
+	if isExists {
+		if topic != c.topic {
+			c.cacheTopics.Store(topic, true)
+		}
+		return nil
+	}
+
+	log.Infof("kafka create topic %s", topic)
 	maxDur, err := time.ParseDuration("60s")
 	if err != nil {
 		log.Errorln("ParseDuration err: ", err)
@@ -225,6 +267,153 @@ func (c *KafkaChannel) Close() {
 
 	if c.consumer != nil {
 		c.consumer.Close()
+	}
+}
+
+func (c *KafkaChannel) CheckChannel() error {
+	if c.consumer == nil {
+		return nil
+	}
+	localOffsets := []int64{}
+	topics, err := c.GetLocalAssignment()
+	if err != nil {
+		c.errorTimes++
+		if c.errorTimes > 3 {
+			return err
+		}
+		return nil
+	}
+	for _, v := range topics {
+		localOffsets = append(localOffsets, int64(v.Offset))
+	}
+	topics, err = c.GetCurrentOffset(topics)
+	if err != nil {
+		c.errorTimes++
+		if c.errorTimes > 3 {
+			return err
+		}
+		return nil
+	}
+	c.errorTimes = 0
+	for _, v := range topics {
+		var found *KafkaOffsetPair
+		for _, vv := range c.topicOffsets {
+			if *vv.Topic == *v.Topic && vv.Partition == v.Partition {
+				found = vv
+				break
+			}
+		}
+		if found == nil {
+			found = &KafkaOffsetPair{
+				TopicPartition: v,
+			}
+			c.topicOffsets = append(c.topicOffsets, found)
+		}
+		found.LastCheckTime = time.Now()
+
+		errThisTime := false
+		endOffset := found.EndOffset
+		if endOffset == 0 || int64(found.Offset) >= endOffset {
+			endOffset, err = c.GetEndOffset(*v.Topic, v.Partition)
+			if err != nil {
+				if !errThisTime {
+					errThisTime = true
+					found.ErrorTimes++
+					if found.ErrorTimes > 3 {
+						return err
+					}
+				}
+				continue
+			}
+			found.EndOffset = endOffset
+		}
+		if v.Offset == kafka.OffsetInvalid {
+			found.Offset = kafka.Offset(found.EndOffset)
+		}
+		if int64(found.Offset) < found.EndOffset {
+			if v.Offset == found.Offset {
+				found.ErrorTimes++
+				log.Warnf("kafka consumer topic offset topic: %s-%d cur: %d, end: %d", *v.Topic, v.Partition, v.Offset, found.EndOffset)
+			} else {
+				found.ErrorTimes = 0
+				if v.Offset == kafka.OffsetInvalid {
+					found.Offset = kafka.Offset(found.EndOffset)
+				} else {
+					found.Offset = v.Offset
+				}
+			}
+		}
+		if found.ErrorTimes >= 3 {
+			log.Errorf("kafka consumer topic offset err: %s", *v.Topic)
+			return errors.New("kafka consumer topic offset error " + *v.Topic)
+		}
+	}
+
+	return nil
+}
+
+func (c *KafkaChannel) GetLocalAssignment() ([]kafka.TopicPartition, error) {
+	toppars, err := c.consumer.Assignment()
+	if err != nil {
+		log.Errorf("kafka channel get assignment err: %v", err)
+		return nil, err
+	}
+	for _, v := range toppars {
+		log.Infof("KafkaChannel.GetLocalAssignment assignment %s %d %d", *v.Topic, v.Partition, v.Offset)
+	}
+	return toppars, nil
+}
+
+func (c *KafkaChannel) GetCurrentOffset(toppars []kafka.TopicPartition) ([]kafka.TopicPartition, error) {
+	type Result struct {
+		toppars []kafka.TopicPartition
+		err     error
+	}
+	ch := make(chan Result, 1)
+	go func() {
+		toppars, err := c.consumer.Committed(toppars, 30000)
+		if err != nil {
+			log.Errorf("kafka channel get committed err: %v", err)
+			ch <- Result{nil, err}
+			return
+		}
+		for _, v := range toppars {
+			log.Infof("KafkaChannel.GetCurrentOffset committed %s %d %d", *v.Topic, v.Partition, v.Offset)
+		}
+		ch <- Result{toppars, nil}
+	}()
+
+	timer := time.NewTimer(time.Second * 35)
+	select {
+	case <-timer.C:
+		return toppars, errors.New("kafka get commited timeout")
+	case r := <-ch:
+		return r.toppars, r.err
+	}
+}
+
+func (c *KafkaChannel) GetEndOffset(topic string, partition int32) (int64, error) {
+	type Result struct {
+		offset int64
+		err    error
+	}
+	ch := make(chan Result, 1)
+	go func() {
+		l, h, err := c.consumer.QueryWatermarkOffsets(topic, partition, 30000)
+		if err != nil {
+			log.Errorf("kafka channel get watermark offset err: %v", err)
+			ch <- Result{0, err}
+			return
+		}
+		log.Infof("KafkaChannel.GetEndOffset %s %d %d %d", topic, partition, l, h)
+		ch <- Result{h, nil}
+	}()
+	timer := time.NewTimer(time.Second * 35)
+	select {
+	case <-timer.C:
+		return 0, errors.New("kafka query watermakr offsets timeout")
+	case r := <-ch:
+		return r.offset, r.err
 	}
 }
 
@@ -338,10 +527,18 @@ func (c *KafkaChannel) startConsumer() error {
 			case ev := <-c.consumer.Events():
 				switch e := ev.(type) {
 				case kafka.AssignedPartitions:
-					c.consumer.Assign(e.Partitions)
+					err = c.consumer.Assign(e.Partitions)
+					if err != nil {
+						log.Errorf("kafka consumer assign error %v", err)
+					}
+					c.assignedTopics = e.Partitions
 					log.Infof("consumer assigned partitions: %v", e)
 				case kafka.RevokedPartitions:
-					c.consumer.Unassign()
+					c.assignedTopics = nil
+					err = c.consumer.Unassign()
+					if err != nil {
+						log.Errorf("kafka consumer unassign error %v", err)
+					}
 					log.Infof("consumer unassigned partitions: %v", e)
 				case *kafka.Message:
 					//log.Infof("consumer %% Message on topic:%s partition:%d offset:%d val:%s grp:%s", *e.TopicPartition.Topic, e.TopicPartition.Partition, e.TopicPartition.Offset, string(e.Value), t.consumerGroup)

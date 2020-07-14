@@ -17,9 +17,9 @@ package consumers
 import (
 	"context"
 	"encoding/json"
-	"github.com/finogeeks/ligase/common"
 	"time"
 
+	"github.com/finogeeks/ligase/common"
 	"github.com/finogeeks/ligase/common/config"
 	"github.com/finogeeks/ligase/dbupdates/dbupdatetypes"
 	"github.com/finogeeks/ligase/model/dbtypes"
@@ -69,6 +69,7 @@ func (c *DBEventSeqConsumer) startWorker(msgChan chan common.ContextMsg) {
 	if c.Cfg.Database.EnableBatch {
 		const duration = time.Millisecond * 50
 		timer := time.NewTimer(duration)
+		defer timer.Stop()
 		inputSeq := []dbupdatetypes.DBEventDataInput{}
 		span, ctx := common.StartSomSpan(context.Background(), "DBEventSeqConsumer.startWorker")
 		defer span.Finish()

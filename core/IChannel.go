@@ -30,6 +30,7 @@ type IChannel interface {
 	SetDir(dir int)
 	GetDir() int
 	SetHandler(handler IChannelConsumer)
+	CheckChannel() error
 	Commit(rawMsg []interface{}) error
 
 	Send(topic string, partition int32, keys, bytes []byte, headers map[string]string) error

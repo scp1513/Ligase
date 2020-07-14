@@ -30,6 +30,7 @@ type ITransport interface {
 	Init(logProf bool)
 	SetBrokers(broker string)
 	GetBrokers() string
+	CheckTransport() error
 	SetStatsInterval(interval int)
 	GetStatsInterval() int
 	PreStart()

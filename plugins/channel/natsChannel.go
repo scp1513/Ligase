@@ -18,13 +18,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/finogeeks/ligase/common"
-	"github.com/opentracing/opentracing-go"
 	"time"
 
+	"github.com/finogeeks/ligase/common"
 	"github.com/finogeeks/ligase/core"
 	"github.com/finogeeks/ligase/skunkworks/log"
 	"github.com/nats-io/go-nats"
+	"github.com/opentracing/opentracing-go"
 )
 
 type NatsChannel struct {
@@ -83,6 +83,10 @@ func (c *NatsChannel) SetHandler(handler core.IChannelConsumer) {
 
 func (c *NatsChannel) SetConn(conn *nats.Conn) {
 	c.conn = conn
+}
+
+func (c *NatsChannel) CheckChannel() error {
+	return nil
 }
 
 func (c *NatsChannel) PreStart(broker string, statsInterval int) {

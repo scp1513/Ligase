@@ -16,13 +16,14 @@ package transport
 
 import (
 	"errors"
-	"github.com/finogeeks/ligase/adapter"
-	"github.com/finogeeks/ligase/common"
 	"runtime/debug"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/finogeeks/ligase/adapter"
+	"github.com/finogeeks/ligase/common"
 	"github.com/finogeeks/ligase/core"
 	log "github.com/finogeeks/ligase/skunkworks/log"
 	jsoniter "github.com/json-iterator/go"
@@ -41,7 +42,8 @@ func NewTransportMultiplexer(conf interface{}) (core.IMultiplexer, error) {
 }
 
 type TransportMultiplexer struct {
-	transMap sync.Map
+	transMap   sync.Map
+	startCheck int32
 }
 
 func (m *TransportMultiplexer) AddNode(nodeName string, node interface{}) bool {
@@ -222,4 +224,26 @@ func (m *TransportMultiplexer) Start() {
 		tran.Start()
 		return true
 	})
+	if atomic.CompareAndSwapInt32(&m.startCheck, 0, 1) {
+		go m.startChecker()
+	}
+}
+
+func (m *TransportMultiplexer) startChecker() {
+	checker := func() error {
+		var err error
+		m.transMap.Range(func(key, value interface{}) bool {
+			tran := value.(core.ITransport)
+			err = tran.CheckTransport()
+			return err == nil
+		})
+		return err
+	}
+	for {
+		err := checker()
+		if err != nil {
+			panic(err)
+		}
+		time.Sleep(time.Second * 30)
+	}
 }

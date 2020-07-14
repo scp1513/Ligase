@@ -116,3 +116,13 @@ func (t *baseTransport) Start() {
 		return true
 	})
 }
+
+func (t *baseTransport) CheckTransport() error {
+	var err error
+	t.channels.Range(func(key, value interface{}) bool {
+		channel := value.(core.IChannel)
+		err = channel.CheckChannel()
+		return err == nil
+	})
+	return err
+}
