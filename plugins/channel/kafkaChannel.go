@@ -175,7 +175,7 @@ func (c *KafkaChannel) createTopic(broker, topic string) error {
 		return nil
 	}
 
-	log.Infof("kafka create topic %s", topic)
+	log.Infof("kafka create topic %s replica: %d partition: %d", topic, adapter.GetKafkaReplicaFactor(), adapter.GetKafkaNumPartitions())
 	maxDur, err := time.ParseDuration("60s")
 	if err != nil {
 		log.Errorln("ParseDuration err: ", err)
