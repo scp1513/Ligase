@@ -589,8 +589,7 @@ func (c *KafkaChannel) SubscribeTopic(topic string) error {
 func (c *KafkaChannel) preStartProducer(broker string, statsInterval int) error {
 	if c.producer == nil {
 		conf := c.conf.(KafkaProducerConf)
-		// err := c.createTopic(broker, c.topic)
-		var err error
+		err := c.createTopic(broker, c.topic)
 		if err != nil {
 			log.Errorf("Failed to create topic:%s err:%v", c.topic, err)
 			return err
@@ -673,7 +672,7 @@ func (c *KafkaChannel) getAssignTopic(topic string) (string, error) {
 	if _, ok := c.cacheTopics.Load(topic); ok {
 		return topic, nil
 	} else {
-		return topic, nil // c.createTopic(c.broker, topic)
+		return topic, c.createTopic(c.broker, topic)
 	}
 }
 
