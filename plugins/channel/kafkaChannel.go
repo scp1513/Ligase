@@ -44,8 +44,9 @@ type KafkaProducerConf interface {
 }
 
 const (
-	DefaultTimeOut          = 10
-	DefaultEnableAutoCommit = true
+	DefaultTimeOut                  = 10
+	DefaultEnableAutoCommit         = true
+	AutoRestartProducerInFatalError = true
 )
 
 type msgContext struct {
@@ -79,6 +80,8 @@ type KafkaChannel struct {
 	broker      string
 	conf        interface{}
 	subTopics   []string
+
+	statsInterval int
 
 	assignedTopics []kafka.TopicPartition
 	topicOffsets   []*KafkaOffsetPair
@@ -237,6 +240,7 @@ func (c *KafkaChannel) dispatch(msg kafka.Message, result chan error) {
 
 func (c *KafkaChannel) PreStart(broker string, statsInterval int) {
 	c.broker = broker
+	c.statsInterval = statsInterval
 	if c.dir == core.CHANNEL_PUB {
 		c.preStartProducer(broker, statsInterval)
 	} else {
@@ -258,6 +262,9 @@ func (c *KafkaChannel) Start() {
 
 func (c *KafkaChannel) Stop() {
 	c.start = false
+	for _, v := range c.msgChan {
+		close(v)
+	}
 }
 
 func (c *KafkaChannel) Close() {
@@ -482,6 +489,7 @@ func (c *KafkaChannel) startProducer() error {
 				// go statsCallback(e.String())
 			default:
 				if c.start == false {
+					log.Infof("kafka producer break event loop")
 					return
 				}
 			}
@@ -493,8 +501,12 @@ func (c *KafkaChannel) startProducer() error {
 
 //todo mannual commit message
 func (c *KafkaChannel) startConsumer() error {
+	err := c.createTopic(c.broker, c.topic)
+	if err != nil {
+		log.Errorf("Failed to create topic:%s err:%v", c.topic, err)
+	}
 	c.subTopics = []string{c.topic}
-	err := c.consumer.SubscribeTopics(c.subTopics, nil)
+	err = c.consumer.SubscribeTopics(c.subTopics, nil)
 	if err != nil {
 		log.Errorf("StartConsumer sub err: %v", err)
 		return nil
@@ -578,7 +590,11 @@ func (c *KafkaChannel) startConsumer() error {
 
 func (c *KafkaChannel) SubscribeTopic(topic string) error {
 	c.subTopics = append(c.subTopics, topic)
-	err := c.consumer.SubscribeTopics(c.subTopics, nil)
+	err := c.createTopic(c.broker, topic)
+	if err != nil {
+		log.Errorf("Failed to create topic:%s err:%v", topic, err)
+	}
+	err = c.consumer.SubscribeTopics(c.subTopics, nil)
 	if err != nil {
 		log.Errorf("SubscribeTopic sub err: %v", err)
 		return err
@@ -661,6 +677,22 @@ func (c *KafkaChannel) preStartConsumer(broker string, statsInterval int) error 
 		c.consumer = s
 	}
 
+	return nil
+}
+
+func (c *KafkaChannel) restartProducer() error {
+	log.Infof("kafka producer auto restart")
+	c.Close()
+	c.Stop()
+	c.producer = nil
+	if err := c.preStartProducer(c.broker, c.statsInterval); err != nil {
+		log.Errorf("kafka producer restart prestart error %v", err)
+		return err
+	}
+	if err := c.startProducer(); err != nil {
+		log.Errorf("kafka producer restart start error %v", err)
+		return err
+	}
 	return nil
 }
 
@@ -813,9 +845,18 @@ func (c *KafkaChannel) pubSync(msg kafka.Message, deliveryChan chan kafka.Event,
 	err := c.producer.Produce(&msg, deliveryChan)
 	if err != nil {
 		log.Errorf("sync Produce msg:%s to topic:%s failed: %s", string(msg.Value), *msg.TopicPartition.Topic, err.Error())
-		//return err
-		result <- err
-		return
+		if AutoRestartProducerInFatalError && c.IsFatalError(err) {
+			err1 := c.restartProducer()
+			if err1 != nil {
+				result <- err
+				return
+			}
+			err = c.producer.Produce(&msg, nil)
+		}
+		if err != nil {
+			result <- err
+			return
+		}
 	}
 	for {
 		select {
@@ -855,6 +896,13 @@ func (c *KafkaChannel) pubAsync(msg kafka.Message) error {
 	err := c.producer.Produce(&msg, nil)
 	if err != nil {
 		log.Errorf("async Kafka produce with key fail, send msg:%s to topic:%s err:%s", string(msg.Value), *msg.TopicPartition.Topic, err.Error())
+		if AutoRestartProducerInFatalError && c.IsFatalError(err) {
+			err1 := c.restartProducer()
+			if err1 != nil {
+				return err
+			}
+			err = c.producer.Produce(&msg, nil)
+		}
 	}
 	return err
 }
@@ -885,4 +933,13 @@ func (c *KafkaChannel) pubRetry(msg *kafka.Message) (retry bool, retries int) {
 //nats methed interface
 func (c *KafkaChannel) SendRecv(topic string, bytes []byte, timeout int, headers map[string]string) ([]byte, error) {
 	return nil, errors.New("unsupported commond SendRecv")
+}
+
+func (c *KafkaChannel) IsFatalError(err error) bool {
+	if kerr, ok := err.(kafka.Error); ok {
+		if kerr.Code() == kafka.ErrFatal {
+			return true
+		}
+	}
+	return false
 }
