@@ -501,8 +501,12 @@ func (c *KafkaChannel) startProducer() error {
 
 //todo mannual commit message
 func (c *KafkaChannel) startConsumer() error {
+	err := c.createTopic(c.broker, c.topic)
+	if err != nil {
+		log.Errorf("Failed to create topic:%s err:%v", c.topic, err)
+	}
 	c.subTopics = []string{c.topic}
-	err := c.consumer.SubscribeTopics(c.subTopics, nil)
+	err = c.consumer.SubscribeTopics(c.subTopics, nil)
 	if err != nil {
 		log.Errorf("StartConsumer sub err: %v", err)
 		return nil
@@ -586,7 +590,11 @@ func (c *KafkaChannel) startConsumer() error {
 
 func (c *KafkaChannel) SubscribeTopic(topic string) error {
 	c.subTopics = append(c.subTopics, topic)
-	err := c.consumer.SubscribeTopics(c.subTopics, nil)
+	err := c.createTopic(c.broker, topic)
+	if err != nil {
+		log.Errorf("Failed to create topic:%s err:%v", topic, err)
+	}
+	err = c.consumer.SubscribeTopics(c.subTopics, nil)
 	if err != nil {
 		log.Errorf("SubscribeTopic sub err: %v", err)
 		return err
