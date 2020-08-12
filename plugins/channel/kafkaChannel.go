@@ -167,16 +167,16 @@ func (c *KafkaChannel) createTopic(broker, topic string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	isExists, err := c.IsTopicCreated(ctx, a, topic)
-	if err != nil {
-		log.Errorf("kafka check if topic exists error %v", err)
-	}
-	if isExists {
-		if topic != c.topic {
-			c.cacheTopics.Store(topic, true)
-		}
-		return nil
-	}
+	// isExists, err := c.IsTopicCreated(ctx, a, topic)
+	// if err != nil {
+	// 	log.Errorf("kafka check if topic exists error %v", err)
+	// }
+	// if isExists {
+	// 	if topic != c.topic {
+	// 		c.cacheTopics.Store(topic, true)
+	// 	}
+	// 	return nil
+	// }
 
 	log.Infof("kafka create topic %s replica: %d partition: %d", topic, adapter.GetKafkaReplicaFactor(), adapter.GetKafkaNumPartitions())
 	maxDur, err := time.ParseDuration("60s")
