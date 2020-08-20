@@ -16,8 +16,13 @@ package channel
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/finogeeks/ligase/common"
@@ -37,6 +42,9 @@ type NatsChannel struct {
 	handler core.IChannelConsumer
 	conn    *nats.Conn
 	sub     *nats.Subscription
+
+	broker   string
+	errTimes int
 }
 
 func init() {
@@ -86,10 +94,94 @@ func (c *NatsChannel) SetConn(conn *nats.Conn) {
 }
 
 func (c *NatsChannel) CheckChannel() error {
+	cid, err := c.conn.GetClientID()
+	if err != nil {
+		log.Warnf("nats channel get client id err: %v", err)
+		c.errTimes++
+		if c.errTimes > 3 {
+			return err
+		}
+		return nil
+	}
+
+	parsed, _ := url.Parse(c.broker)
+	req, err := http.NewRequest("GET", "http://"+parsed.Hostname()+":8222/connz", nil)
+	if err != nil {
+		log.Warnf("nats channel get connz new request err: %v", err)
+		return nil
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Warnf("nats channel get connz info err: %v", err)
+		c.errTimes++
+		if c.errTimes > 3 {
+			return err
+		}
+		return nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		log.Warnf("nats channel get connz info statusCode: %d", resp.StatusCode)
+		c.errTimes++
+		if c.errTimes > 3 {
+			return err
+		}
+		return nil
+	}
+
+	type Connz struct {
+		ServerID       string `json:"server_id"`
+		Now            string `json:"now"`
+		NumConnections int    `json:"num_connections"`
+		Total          int    `json:"total"`
+		Offset         int    `json:"offset"`
+		Limit          int    `json:"limit"`
+		Connections    []struct {
+			CID           uint64
+			IP            string
+			Port          int
+			Start         string
+			LastActivity  string
+			Uptime        string
+			Idle          string
+			PendingBytes  int
+			InMsgs        int
+			OutMsgs       int
+			InBytes       int
+			OutBytes      int
+			Subscriptions int
+			Lang          string
+			Version       string
+		} `json:"connections"`
+	}
+	if resp.Body != nil {
+		data, _ := ioutil.ReadAll(resp.Body)
+		defer resp.Body.Close()
+
+		var connz Connz
+		json.Unmarshal(data, &connz)
+		found := false
+		for _, v := range connz.Connections {
+			if v.CID == cid {
+				found = true
+				break
+			}
+		}
+		if !found {
+			log.Warnf("nats channel get connection not found %d rawdata: %s", cid, data)
+			c.errTimes++
+			if c.errTimes > 3 {
+				return errors.New("nats channel connection not found " + strconv.FormatInt(int64(cid), 10))
+			}
+		} else {
+			c.errTimes = 0
+		}
+	}
+
 	return nil
 }
 
 func (c *NatsChannel) PreStart(broker string, statsInterval int) {
+	c.broker = broker
 	if c.conn == nil {
 		conn, err := nats.Connect(broker)
 		if err != nil {
