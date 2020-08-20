@@ -51,7 +51,7 @@ func (m *DBEventSeqManager) Start() error {
 		cfg.Name = cfg.Name + "_group"
 		cfg.Topic = cfg.Topic + "_" + key
 		cfg.AutoCommit = new(bool)
-		*cfg.AutoCommit = false
+		*cfg.AutoCommit = true
 		cfg.AutoOffsetReset = new(string)
 		*cfg.AutoOffsetReset = "earliest"
 
