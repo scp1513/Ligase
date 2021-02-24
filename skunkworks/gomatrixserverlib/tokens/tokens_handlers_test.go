@@ -37,7 +37,7 @@ func expireZeroValidTokenOp() TokenOptions {
 }
 
 func TestExpiredLoginToken(t *testing.T) {
-	fakeToken, err := GenerateLoginToken(expireZeroValidTokenOp())
+	fakeToken, _ := GenerateLoginToken(expireZeroValidTokenOp())
 	// token uses 1 second precision
 	time.Sleep(time.Second)
 	res := ValidateToken(validTokenOp, fakeToken)

@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"sort"
 	"testing"
 
@@ -294,7 +293,7 @@ func TestVerifyAllEventSignatures(t *testing.T) {
 	if err := json.Unmarshal(eventJSON, &event.fields); err != nil {
 		t.Fatal(err)
 	}
-	event.eventJSON = eventJSON
+	// event.eventJSON = eventJSON
 
 	events := []Event{event}
 	if err := VerifyAllEventSignatures(context.Background(), events, &verifier); err != nil {
@@ -353,7 +352,7 @@ func TestVerifyAllEventSignaturesForInvite(t *testing.T) {
 	if err := json.Unmarshal(eventJSON, &event.fields); err != nil {
 		t.Fatal(err)
 	}
-	event.eventJSON = eventJSON
+	// event.eventJSON = eventJSON
 
 	events := []Event{event}
 	if err := VerifyAllEventSignatures(context.Background(), events, &verifier); err != nil {

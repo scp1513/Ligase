@@ -16,7 +16,7 @@
 package gomatrixserverlib
 
 import (
-	"encoding/json"
+	jsonRaw "encoding/json"
 	"testing"
 )
 
@@ -202,11 +202,11 @@ func TestStateNeededForInvite3PID(t *testing.T) {
 }
 
 type testAuthEvents struct {
-	CreateJSON           json.RawMessage            `json:"create"`
-	JoinRulesJSON        json.RawMessage            `json:"join_rules"`
-	PowerLevelsJSON      json.RawMessage            `json:"power_levels"`
-	MemberJSON           map[string]json.RawMessage `json:"member"`
-	ThirdPartyInviteJSON map[string]json.RawMessage `json:"third_party_invite"`
+	CreateJSON           jsonRaw.RawMessage            `json:"create"`
+	JoinRulesJSON        jsonRaw.RawMessage            `json:"join_rules"`
+	PowerLevelsJSON      jsonRaw.RawMessage            `json:"power_levels"`
+	MemberJSON           map[string]jsonRaw.RawMessage `json:"member"`
+	ThirdPartyInviteJSON map[string]jsonRaw.RawMessage `json:"third_party_invite"`
 }
 
 func (tae *testAuthEvents) Create() (*Event, error) {
@@ -266,9 +266,9 @@ func (tae *testAuthEvents) ThirdPartyInvite(stateKey string) (*Event, error) {
 }
 
 type testCase struct {
-	AuthEvents testAuthEvents    `json:"auth_events"`
-	Allowed    []json.RawMessage `json:"allowed"`
-	NotAllowed []json.RawMessage `json:"not_allowed"`
+	AuthEvents testAuthEvents       `json:"auth_events"`
+	Allowed    []jsonRaw.RawMessage `json:"allowed"`
+	NotAllowed []jsonRaw.RawMessage `json:"not_allowed"`
 }
 
 func testEventAllowed(t *testing.T, testCaseJSON string) {
