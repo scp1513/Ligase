@@ -16,16 +16,19 @@ package model
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/finogeeks/ligase/common/filter"
 	"github.com/finogeeks/ligase/common/uid"
-	"github.com/finogeeks/ligase/skunkworks/gomatrixserverlib"
 	"github.com/finogeeks/ligase/model/dbtypes"
 	"github.com/finogeeks/ligase/model/roomservertypes"
+	"github.com/finogeeks/ligase/skunkworks/gomatrixserverlib"
 )
 
 type RoomServerDatabase interface {
 	//NewDatabase(driver, createAddr, address, topic string, useAsync bool) (interface{}, error)
+	GetDB() *sql.DB
+
 	SetIDGenerator(idg *uid.UidGenerator)
 
 	WriteDBEvent(update *dbtypes.DBEvent) error

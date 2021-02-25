@@ -15,6 +15,7 @@
 package federationapi
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/finogeeks/ligase/cache"
@@ -29,13 +30,13 @@ import (
 	"github.com/finogeeks/ligase/federation/model/backfilltypes"
 	fedrepos "github.com/finogeeks/ligase/federation/model/repos"
 	fedmodel "github.com/finogeeks/ligase/federation/storage/model"
-	log "github.com/finogeeks/ligase/skunkworks/log"
 	"github.com/finogeeks/ligase/model"
 	"github.com/finogeeks/ligase/model/repos"
 	"github.com/finogeeks/ligase/model/service"
 	"github.com/finogeeks/ligase/model/service/publicroomsapi"
-	dbmodel "github.com/finogeeks/ligase/storage/model"
+	log "github.com/finogeeks/ligase/skunkworks/log"
 	"github.com/finogeeks/ligase/skunkworks/util/id"
+	dbmodel "github.com/finogeeks/ligase/storage/model"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -103,7 +104,7 @@ func (fed *FederationAPIComponent) Setup() {
 	fed.fedRpcCli.Start()
 }
 
-func (fed *FederationAPIComponent) OnMessage(subject string, partition int32, data []byte) {
+func (fed *FederationAPIComponent) OnMessage(ctx context.Context, subject string, partition int32, data []byte, rawMsg interface{}) {
 	//dec := gob.NewDecoder(bytes.NewReader(data))
 	msg := &model.GobMessage{}
 	//err := dec.Decode(msg)

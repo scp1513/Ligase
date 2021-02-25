@@ -17,11 +17,12 @@ package pushapi
 import (
 	"context"
 	"database/sql"
+
 	"github.com/finogeeks/ligase/model/pushapitypes"
 
 	"github.com/finogeeks/ligase/common"
-	"github.com/finogeeks/ligase/skunkworks/log"
 	"github.com/finogeeks/ligase/model/dbtypes"
+	"github.com/finogeeks/ligase/skunkworks/log"
 )
 
 const pushrulesSchema = `
@@ -83,10 +84,10 @@ func (s *pushRulesStatements) prepare(d *DataBase) (err error) {
 	return
 }
 
-func (s *pushRulesStatements) loadPushRule(ctx context.Context) ([]pushapitypes.PushRuleData, error){
+func (s *pushRulesStatements) loadPushRule(ctx context.Context) ([]pushapitypes.PushRuleData, error) {
 	offset := 0
 	limit := 1000
-	result :=[]pushapitypes.PushRuleData{}
+	result := []pushapitypes.PushRuleData{}
 	for {
 		rules := []pushapitypes.PushRuleData{}
 		rows, err := s.recoverPushRuleStmt.QueryContext(ctx, limit, offset)
@@ -99,8 +100,8 @@ func (s *pushRulesStatements) loadPushRule(ctx context.Context) ([]pushapitypes.
 			if err := rows.Scan(&pushRule.UserName, &pushRule.RuleId, &pushRule.PriorityClass, &pushRule.Priority, &pushRule.Conditions, &pushRule.Actions); err != nil {
 				log.Errorf("load push rule scan rows error:%v", err)
 				return nil, err
-			}else{
-				rules = append(rules,pushRule)
+			} else {
+				rules = append(rules, pushRule)
 			}
 		}
 		result = append(result, rules...)
@@ -151,7 +152,7 @@ func (s *pushRulesStatements) processRecover(rows *sql.Rows) (exists bool, err e
 		update.IsRecovery = true
 		update.PushDBEvents.PushRuleInert = &pushRuleInsert
 		update.SetUid(int64(common.CalcStringHashCode64(pushRuleInsert.UserID)))
-		err2 := s.db.WriteDBEvent(&update)
+		err2 := s.db.WriteDBEventWithTbl(&update, "push_rules")
 		if err2 != nil {
 			log.Errorf("update pushRules cache error: %v", err2)
 			if err == nil {
@@ -175,7 +176,7 @@ func (s *pushRulesStatements) deletePushRule(
 			RuleID: ruleID,
 		}
 		update.SetUid(int64(common.CalcStringHashCode64(userID)))
-		return s.db.WriteDBEvent(&update)
+		return s.db.WriteDBEventWithTbl(&update, "push_rules")
 	}
 
 	return s.onDeletePushRule(ctx, userID, ruleID)
@@ -205,7 +206,7 @@ func (s *pushRulesStatements) insertPushRule(
 			Actions:       actions,
 		}
 		update.SetUid(int64(common.CalcStringHashCode64(userID)))
-		return s.db.WriteDBEvent(&update)
+		return s.db.WriteDBEventWithTbl(&update, "push_rules")
 	}
 
 	return s.onInsertPushRule(ctx, userID, ruleID, priorityClass, priority, conditions, actions)

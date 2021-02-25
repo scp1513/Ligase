@@ -162,7 +162,7 @@ type Dendrite struct {
 			SettingUpdate      ProducerConf `yaml:"setting_update"`
 			UserInfoUpdate     ProducerConf `yaml:"user_info_update"`
 			DismissRoom        ProducerConf `yaml:"dismiss_room"`
-			OutputStatic 	   ProducerConf `yaml:"output_static_data"`
+			OutputStatic       ProducerConf `yaml:"output_static_data"`
 		} `yaml:"producers"`
 		Consumer struct {
 			OutputRoomEventPublicRooms   ConsumerConf `yaml:"output_room_event_publicroom"`    // OutputRoomEventPublicRooms "public-rooms",
@@ -225,7 +225,8 @@ type Dendrite struct {
 	} `yaml:"nats"`
 	// Postgres Config
 	Database struct {
-		CreateDB DataBaseConf `yaml:"create_db"`
+		EnableBatch bool         `yaml:"enable_batch"`
+		CreateDB    DataBaseConf `yaml:"create_db"`
 		// The Account database stores the login details and account information
 		// for local users. It is accessed by the ClientAPI.
 		Account DataBaseConf `yaml:"account"`
@@ -447,9 +448,9 @@ type Dendrite struct {
 	} `yaml:"device_mng"`
 
 	StateMgr struct {
-		StateNotify    	 	bool  `yaml:"state_notify"`
-		StateOffline    	int64 `yaml:"state_offline"`
-		StateReport   		int64 `yaml:"state_report"`
+		StateNotify  bool  `yaml:"state_notify"`
+		StateOffline int64 `yaml:"state_offline"`
+		StateReport  int64 `yaml:"state_report"`
 	} `yaml:"state_mgr"`
 
 	Encryption struct {
@@ -472,14 +473,14 @@ type Dendrite struct {
 		MongoURL string `yaml:"mongo_url"`
 	} `yaml:"external_migration"`
 
-	License     string `yaml:"license"`
-	LicenseItem LicenseConf
-	TokenExpire int64 `yaml:"token_expire"`
-	UtlExpire   int64 `yaml:"utl_expire"`
-	LatestToken int   `yaml:"latest_token"`
-	ReceiptDelay int64 `yaml:"receipt_delay"`
-	CheckReceipt int64 `yaml:"check_receipt"`
-	OnlineSpec 	 string	`yaml:"online_spec"`
+	License      string `yaml:"license"`
+	LicenseItem  LicenseConf
+	TokenExpire  int64  `yaml:"token_expire"`
+	UtlExpire    int64  `yaml:"utl_expire"`
+	LatestToken  int    `yaml:"latest_token"`
+	ReceiptDelay int64  `yaml:"receipt_delay"`
+	CheckReceipt int64  `yaml:"check_receipt"`
+	OnlineSpec   string `yaml:"online_spec"`
 	OnlineDetail string `yaml:"online_detail_spec"`
 }
 

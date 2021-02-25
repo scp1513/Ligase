@@ -16,6 +16,7 @@ package entry
 
 import (
 	"context"
+
 	"github.com/finogeeks/ligase/bgmng"
 	"github.com/finogeeks/ligase/clientapi"
 	"github.com/finogeeks/ligase/common"
@@ -45,6 +46,13 @@ func StartClientAPIServer(base *basecomponent.BaseDendrite, cmd *serverCmdPar) {
 	addProducer(transportMultiplexer, kafka.Producer.OutputRoomFedEvent)
 
 	addConsumer(transportMultiplexer, kafka.Consumer.InputRoomEvent, base.Cfg.MultiInstance.Instance)
+
+	for _, v := range dbUpdateProducerName {
+		dbUpdates := kafka.Producer.DBUpdates
+		dbUpdates.Topic = dbUpdates.Topic + "_" + v
+		dbUpdates.Name = dbUpdates.Name + "_" + v
+		addProducer(transportMultiplexer, dbUpdates)
+	}
 
 	transportMultiplexer.PreStart()
 	cache := base.PrepareCache()
@@ -130,7 +138,7 @@ func StartPushAPIServer(base *basecomponent.BaseDendrite, cmd *serverCmdPar) {
 	rpcClient := common.NewRpcClient(base.Cfg.Nats.Uri, idg)
 	rpcClient.Start(true)
 	pushDB := base.CreatePushApiDB()
-	pushDataRepo := repos.NewPushDataRepo(pushDB,base.Cfg)
+	pushDataRepo := repos.NewPushDataRepo(pushDB, base.Cfg)
 	pushDataRepo.LoadHistory(context.TODO())
 	pushapi.SetupPushAPIComponent(base, cache, rpcClient, pushDataRepo)
 }
@@ -166,6 +174,13 @@ func StartFixDBServer(base *basecomponent.BaseDendrite, cmd *serverCmdPar) {
 	addProducer(transportMultiplexer, kafka.Producer.OutputProfileData)
 	addProducer(transportMultiplexer, kafka.Producer.DBUpdates)
 	addProducer(transportMultiplexer, kafka.Producer.OutputRoomFedEvent)
+
+	for _, v := range dbUpdateProducerName {
+		dbUpdates := kafka.Producer.DBUpdates
+		dbUpdates.Topic = dbUpdates.Topic + "_" + v
+		dbUpdates.Name = dbUpdates.Name + "_" + v
+		addProducer(transportMultiplexer, dbUpdates)
+	}
 
 	transportMultiplexer.PreStart()
 	transportMultiplexer.Start()
