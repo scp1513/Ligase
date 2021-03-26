@@ -331,7 +331,7 @@ func (p *Processor) doDownload(
 
 	var res *http.Response
 	var err error
-	if isFromFed {
+	if isFromFed || (p.cfg.Media.OpenDownload && req.Header.Get(HeaderCustomID) == "") {
 		res, err = p.httpRequest(FakeUserID, req.Method, reqUrl, req)
 	} else {
 		res, err = p.httpRequest("", req.Method, reqUrl, req)

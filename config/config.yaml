@@ -16,6 +16,7 @@ matrix:
 
 media:
     # To be implemented.
+    open_download: false
     netdisk_url: netdisk_url_prefix
     upload_url: upload_url_prefix?type=%s&thumbnail=%s
     download_url: download_url_prefix/%s
