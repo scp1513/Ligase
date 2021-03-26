@@ -121,6 +121,7 @@ type Dendrite struct {
 
 	// The configuration specific to the media repostitory.
 	Media struct {
+		OpenDownload bool   `yaml:"open_download"`
 		NetdiskUrl   string `yaml:"netdisk_url"`
 		UploadUrl    string `yaml:"upload_url"`
 		DownloadUrl  string `yaml:"download_url"`
