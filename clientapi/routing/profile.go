@@ -112,8 +112,15 @@ func GetProfile(
 
 	displayName, avatarURL, err := complexCache.GetProfileByUserID(userID)
 	if err != nil {
-		log.Warnf("getProfileComplex from local domain: %s, error: %v", domain, err)
-		return getFedProfile(ctx, userID, cfg, federation, fedDomians, complexCache, domain)
+		if !common.CheckValidDomain(domain, cfg.Matrix.ServerName) {
+			log.Warnf("getProfileComplex from local domain: %s, error: %v", domain, err)
+			return getFedProfile(ctx, userID, cfg, federation, fedDomians, complexCache, domain)
+		} else {
+			return http.StatusNotFound, &external.GetProfileResponse{
+				AvatarURL:   cfg.DefaultAvatar,
+				DisplayName: "",
+			}
+		}
 	}
 
 	return http.StatusOK, &external.GetProfileResponse{
@@ -142,10 +149,16 @@ func GetAvatarURL(
 
 	avatarURL, err := complexCache.GetAvatarURL(userID)
 	if err != nil {
-		log.Warnf("getAvatarComplex from local domain: %s, error: %v", domain, err)
-		code, resp := getFedProfile(ctx, userID, cfg, federation, fedDomians, complexCache, domain)
-		return code, &external.GetAvatarURLResponse{
-			AvatarURL: resp.AvatarURL,
+		if !common.CheckValidDomain(domain, cfg.Matrix.ServerName) {
+			log.Warnf("getAvatarComplex from local domain: %s, error: %v", domain, err)
+			code, resp := getFedProfile(ctx, userID, cfg, federation, fedDomians, complexCache, domain)
+			return code, &external.GetAvatarURLResponse{
+				AvatarURL: resp.AvatarURL,
+			}
+		} else {
+			return http.StatusOK, &external.GetAvatarURLResponse{
+				AvatarURL: cfg.DefaultAvatar,
+			}
 		}
 	}
 
@@ -263,11 +276,17 @@ func GetDisplayName(
 	// local check
 	displayName, err := complexCache.GetDisplayName(userID)
 	if err != nil {
-		log.Warnf("getDisplayNameComplex from local domain: %s, error: %v", domain, err)
+		if !common.CheckValidDomain(domain, cfg.Matrix.ServerName) {
+			log.Warnf("getDisplayNameComplex from local domain: %s, error: %v", domain, err)
 
-		code, resp := getFedProfile(ctx, userID, cfg, federation, fedDomians, complexCache, domain)
-		return code, &external.GetDisplayNameResponse{
-			DisplayName: resp.DisplayName,
+			code, resp := getFedProfile(ctx, userID, cfg, federation, fedDomians, complexCache, domain)
+			return code, &external.GetDisplayNameResponse{
+				DisplayName: resp.DisplayName,
+			}
+		} else {
+			return http.StatusOK, &external.GetDisplayNameResponse{
+				DisplayName: "",
+			}
 		}
 	}
 
