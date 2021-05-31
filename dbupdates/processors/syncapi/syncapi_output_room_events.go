@@ -72,6 +72,11 @@ func (p *DBSyncapiEventProcessor) processInsert(ctx context.Context, inputs []db
 	success := false
 	if len(inputs) > 1 {
 		sqlutil.WithTransaction(p.db.GetDB(), func(txn0, txn1 *sql.Tx) error {
+			timespend0 := common.NewTimeSpend()
+			defer func() {
+				timespend0.Logf(1000, "bulk insert %s finished, len %d", p.name, len(inputs))
+			}()
+			timespend := common.NewTimeSpend()
 			stmt0, err := txn0.Prepare(pq.CopyIn("syncapi_output_room_events", "id", "room_id",
 				"event_id", "event_json", "add_state_ids", "remove_state_ids", "device_id",
 				"transaction_id", "type", "domain_offset", "depth", "domain", "origin_server_ts"))
@@ -80,6 +85,8 @@ func (p *DBSyncapiEventProcessor) processInsert(ctx context.Context, inputs []db
 				return err
 			}
 			defer stmt0.Close()
+			timespend.Logf(1000, "pg prepare 1 %s", p.name)
+			timespend.Reset()
 
 			stmt1, err := txn1.Prepare(pq.CopyIn("syncapi_output_room_events_mirror", "id",
 				"room_id", "event_id", "event_json", "add_state_ids", "remove_state_ids", "device_id",
@@ -89,6 +96,8 @@ func (p *DBSyncapiEventProcessor) processInsert(ctx context.Context, inputs []db
 				return err
 			}
 			defer stmt1.Close()
+			timespend.Logf(1000, "pg prepare 2 %s", p.name)
+			timespend.Reset()
 
 			for _, v := range inputs {
 				msg := v.Event.SyncDBEvents.SyncEventInsert
@@ -119,19 +128,24 @@ func (p *DBSyncapiEventProcessor) processInsert(ctx context.Context, inputs []db
 					}
 				}
 			}
+			timespend.Logf(1000, "pg exec %s", p.name)
+			timespend.Reset()
 			_, err = stmt0.ExecContext(ctx)
 			if err != nil {
 				log.Warnf("bulk insert error %v", err)
 				return err
 			}
+			timespend.Logf(1000, "pg exec all 1 %s", p.name)
+			timespend.Reset()
 			_, err = stmt1.ExecContext(ctx)
 			if err != nil {
 				log.Warnf("bulk insert error %v", err)
 				return err
 			}
+			timespend.Logf(1000, "pg exec all 2 %s", p.name)
 
 			success = true
-			log.Debugf("bulk insert %s success, len %d", p.name, len(inputs))
+			log.Infof("bulk insert %s success, len %d", p.name, len(inputs))
 			return nil
 		})
 	}

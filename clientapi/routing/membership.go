@@ -19,6 +19,7 @@ package routing
 
 import (
 	"context"
+	js "encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -60,7 +61,7 @@ func SendMembership(
 	log.Infof("------- traceId:%s handle SendMembership QueryRoomState send room %s membership:%s user:%s", traceId, roomID, membership, userID)
 	var body threepid.MembershipRequest
 	if membership != "leave" && len(r.Content) > 0 {
-		if err := json.Unmarshal(r.Content, &body); err != nil {
+		if err := js.Unmarshal(r.Content, &body); err != nil {
 			log.Errorf("------- traceId:%s handle SendMembership The request body could not be decoded into valid JSON room %s membership:%s user:%s", traceId, roomID, membership, userID)
 			return http.StatusBadRequest, jsonerror.BadJSON("handle SendMembership The request body could not be decoded into valid JSON. " + err.Error())
 		}
@@ -399,7 +400,7 @@ func buildMembershipEvent(
 			log.Infof("buildevent join and autojoin handle SendMembership traceId:%s membership:%s buildMembershipEvent builder.SetContent for user %s roomID:%s error %v", traceId, membership, userID, roomID, err)
 			return e, nil
 		}
-	}else{
+	} else {
 		log.Errorf("build event err:%v", err)
 		return nil, err
 	}

@@ -94,7 +94,7 @@ func (p *DBRoomserverMembershipProcessor) processInsert(ctx context.Context, inp
 			}
 
 			success = true
-			log.Debugf("bulk insert %s success, len %d", p.name, len(inputs))
+			log.Infof("bulk insert %s success, len %d", p.name, len(inputs))
 			return nil
 		})
 	}

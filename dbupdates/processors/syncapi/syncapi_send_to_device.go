@@ -96,7 +96,7 @@ func (p *DBSyncapiSendToDeviceProcessor) processInsert(ctx context.Context, inpu
 			}
 
 			success = true
-			log.Debugf("bulk insert %s success, len %d", p.name, len(inputs))
+			log.Infof("bulk insert %s success, len %d", p.name, len(inputs))
 			return nil
 		})
 	}

@@ -71,12 +71,19 @@ func (p *DBRoomserverEventsProcessor) processInsert(ctx context.Context, inputs 
 	success := false
 	if len(inputs) > 1 {
 		common.WithTransaction(p.db.GetDB(), func(txn *sql.Tx) error {
+			timespend0 := common.NewTimeSpend()
+			defer func() {
+				timespend0.Logf(1000, "bulk insert %s finished, len %d", p.name, len(inputs))
+			}()
+			timespend := common.NewTimeSpend()
 			stmt, err := txn.Prepare(pq.CopyIn("roomserver_events", "room_nid", "event_type_id", "event_state_key_id", "event_id", "reference_sha256", "auth_event_nids", "depth", "event_nid", "state_snapshot_nid", "previous_event_id", "previous_reference_sha256", "offsets", "domain", "sent_to_output"))
 			if err != nil {
 				log.Errorf("bulk insert prepare error %v", err)
 				return err
 			}
 			defer stmt.Close()
+			timespend.Logf(1000, "pg prepare %s", p.name)
+			timespend.Reset()
 
 			for _, v := range inputs {
 				msg := v.Event.RoomDBEvents.EventInsert
@@ -90,14 +97,18 @@ func (p *DBRoomserverEventsProcessor) processInsert(ctx context.Context, inputs 
 					return err
 				}
 			}
+			timespend.Logf(1000, "pg exec %s", p.name)
+			timespend.Reset()
 			_, err = stmt.ExecContext(ctx)
 			if err != nil {
 				log.Warnf("bulk insert error %v", err)
 				return err
 			}
+			timespend.Logf(1000, "pg exec all %s", p.name)
+			timespend.Reset()
 
 			success = true
-			log.Debugf("bulk insert %s success, len %d", p.name, len(inputs))
+			log.Infof("bulk insert %s success, len %d", p.name, len(inputs))
 			return nil
 		})
 	}

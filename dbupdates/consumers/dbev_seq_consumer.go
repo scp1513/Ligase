@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/finogeeks/ligase/common"
 	"github.com/finogeeks/ligase/common/config"
 	"github.com/finogeeks/ligase/dbupdates/dbupdatetypes"
 	"github.com/finogeeks/ligase/model/dbtypes"
@@ -38,11 +39,12 @@ func newDBEventSeqConsumer(
 		c.batchKeys = b.BatchKeys()
 	}
 	c.commiter = commiter
+	log.Infof("new DBEventSeqConsumer %s batchKey:%v", c.name, c.batchKeys)
 	return c
 }
 
 func (c *DBEventSeqConsumer) Start() error {
-	c.msgChan = make(chan dbupdatetypes.DBEventDataInput, 4096)
+	c.msgChan = make(chan dbupdatetypes.DBEventDataInput, 409600)
 	go c.startWorker(c.msgChan)
 	c.processor.Start()
 
@@ -74,7 +76,7 @@ func (c *DBEventSeqConsumer) startWorker(msgChan chan dbupdatetypes.DBEventDataI
 				}
 				inputSeq = append(inputSeq, input)
 				lastKey = input.Event.Key
-				if len(inputSeq) >= 30 || c.batchKeys == nil || !c.batchKeys[input.Event.Key] {
+				if len(inputSeq) >= 300 || c.batchKeys == nil || !c.batchKeys[input.Event.Key] {
 					c.processInputs(ctx, inputSeq)
 					inputSeq = inputSeq[:0]
 					timer.Reset(duration)
@@ -103,7 +105,9 @@ func (c *DBEventSeqConsumer) processInputs(ctx context.Context, inputs []dbupdat
 		}
 		c.CommitMessage(msgs)
 	}()
+	timespend := common.NewTimeSpend()
 	c.processor.Process(ctx, inputs)
+	timespend.Logf(1000, "pg process %s-%d %d finished", c.name, inputs[0].Event.Key, len(inputs))
 }
 
 func (c *DBEventSeqConsumer) OnMessage(ctx context.Context, topic string, partition int32, data []byte, rawMsg interface{}) {
@@ -124,7 +128,9 @@ func (c *DBEventSeqConsumer) OnMessage(ctx context.Context, topic string, partit
 }
 
 func (c *DBEventSeqConsumer) CommitMessage(rawMsg []interface{}) {
+	timspend := common.NewTimeSpend()
 	err := c.commiter.Commit(rawMsg)
+	timspend.Logf(1000, "commit kafka")
 	if err != nil {
 		log.Errorf("DBEVentDataConsumer commit error %v", err)
 	}

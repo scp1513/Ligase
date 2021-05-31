@@ -92,7 +92,7 @@ func (p *DBRoomserverRoomAliasesProcessor) processInsert(ctx context.Context, in
 			}
 
 			success = true
-			log.Debugf("bulk insert %s success, len %d", p.name, len(inputs))
+			log.Infof("bulk insert %s success, len %d", p.name, len(inputs))
 			return nil
 		})
 	}
