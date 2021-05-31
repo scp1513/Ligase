@@ -33,6 +33,12 @@ func NewDBRoomserverStateSanpshotsProcessor(
 	return p
 }
 
+func (p *DBRoomserverStateSanpshotsProcessor) BatchKeys() map[int64]bool {
+	return map[int64]bool{
+		dbtypes.EventStateSnapInsertKey: true,
+	}
+}
+
 func (p *DBRoomserverStateSanpshotsProcessor) Start() {
 	db, err := common.GetDBInstance("roomserver", p.cfg)
 	if err != nil {
@@ -57,12 +63,12 @@ func (p *DBRoomserverStateSanpshotsProcessor) Process(ctx context.Context, input
 }
 
 func (p *DBRoomserverStateSanpshotsProcessor) processInsert(ctx context.Context, inputs []dbupdatetypes.DBEventDataInput) error {
-	for _, v := range inputs {
-		msg := v.Event.RoomDBEvents.EventStateSnapInsert
-		err := p.db.InsertStateRaw(ctx, msg.StateSnapNid, msg.RoomNid, msg.StateBlockNids)
-		if err != nil {
-			log.Error(p.name, "insert err", err, msg.StateSnapNid, msg.RoomNid, msg.StateBlockNids)
-		}
-	}
+	// for _, v := range inputs {
+	// 	msg := v.Event.RoomDBEvents.EventStateSnapInsert
+	// 	err := p.db.InsertStateRaw(ctx, msg.StateSnapNid, msg.RoomNid, msg.StateBlockNids)
+	// 	if err != nil {
+	// 		log.Error(p.name, "insert err", err, msg.StateSnapNid, msg.RoomNid, msg.StateBlockNids)
+	// 	}
+	// }
 	return nil
 }

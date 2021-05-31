@@ -93,7 +93,7 @@ func (s *stateSnapshotStatements) insertState(
 			StateBlockNids: stateBlockNIDs,
 		}
 		update.SetUid(id)
-		s.db.WriteDBEventWithTbl(&update, "roomserver_state_snapshots")
+		//s.db.WriteDBEventWithTbl(&update, "roomserver_state_snapshots")
 
 		return id, nil
 	}
