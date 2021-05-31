@@ -22,7 +22,6 @@ import (
 	"database/sql"
 
 	"github.com/finogeeks/ligase/model/dbtypes"
-	"github.com/finogeeks/ligase/skunkworks/log"
 	"github.com/lib/pq"
 )
 
