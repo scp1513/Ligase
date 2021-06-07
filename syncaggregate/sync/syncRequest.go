@@ -255,9 +255,9 @@ func (sm *SyncMng) buildRequest(
 	res.marks.init(str, sm)
 
 	//build limit
-	res.limit = 20
+	res.limit = 100
 	if res.marks.utlRecv == 0 {
-		res.limit = 10
+		res.limit = 100
 	}
 
 	res.filter = sm.buildFilter(req, device.UserID)
@@ -383,10 +383,10 @@ func (sm *SyncMng) OnSyncRequest(
 		}
 
 		//if sm.cfg.SendMemberEvent == false {
-			if sm.presenceStreamRepo.ExistsPresence(request.device.UserID, request.marks.preRecv) && now-start > 500 && request.device.IsHuman == true {
-				log.Infof("SyncMng break has presence messages traceid:%s user:%s dev:%s now:%d latest:%d ", request.traceId, request.device.UserID, request.device.ID, now, start)
-				break
-			}
+		if sm.presenceStreamRepo.ExistsPresence(request.device.UserID, request.marks.preRecv) && now-start > 500 && request.device.IsHuman == true {
+			log.Infof("SyncMng break has presence messages traceid:%s user:%s dev:%s now:%d latest:%d ", request.traceId, request.device.UserID, request.device.ID, now, start)
+			break
+		}
 		//}
 	}
 
@@ -423,7 +423,7 @@ func (sm *SyncMng) OnSyncRequest(
 
 		if request.device.IsHuman == true {
 			//if sm.cfg.SendMemberEvent == false {
-				sm.addPresence(request, res)
+			sm.addPresence(request, res)
 			//}
 
 			res = sm.addAccountData(request, res)
